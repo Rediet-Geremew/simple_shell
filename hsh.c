@@ -4,7 +4,7 @@
  * main - Entry point of the shell program.
  * @argc: Number of command-line arguments.
  * @argv: Array of command-line arguments.
- * 
+ *
  * Return: 0 on success.
  */
 int main(int argc, char **argv)
@@ -47,7 +47,7 @@ int main(int argc, char **argv)
  * execute_command - Executes a command from the shell.
  * @command: The command to execute.
  * @status: Pointer to store the exit status.
- * 
+ *
  * Return: 0 on success, -1 on failure.
  */
 int execute_command(char *command, int *status)
