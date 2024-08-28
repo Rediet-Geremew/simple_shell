@@ -6,7 +6,11 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
+#include <errno.h>
 
-int execute_command(char *command);
+void execute_command(char *command);
+char *read_line(void);
+void prompt(void);
 
 #endif

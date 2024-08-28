@@ -1,5 +1,7 @@
 #include "simple_shell.h"
 
+extern char **environ;
+
 /**
  * main - entry point of the simple shell program
  *
@@ -7,49 +9,66 @@
  */
 int main(void)
 {
-	char *line = NULL;
-	size_t len = 0;
-	ssize_t read;
-	int status = 0;
+	char *command;
 
 	while (1)
 	{
-		if (isatty(STDIN_FILENO))
-		{
-			write(STDOUT_FILENO, "#cisfun$ ", 9);
-		}
-		read = getline(&line, &len, stdin);
-		if (read == -1)
+		prompt();
+		command = read_line();
+		if (command == NULL)
 		{
 			if (feof(stdin))
 			{
-				write(STDOUT_FILENO, "\n", 1);
-				free(line);
+				free(command);
 				exit(EXIT_SUCCESS);
 			}
-			perror("getline");
-			exit(EXIT_FAILURE);
+			else
+			{
+				perror("read_line");
+				continue;
+			}
 		}
-		if (line[read - 1] == '\n')
+		if (strlen(command) > 0)
 		{
-			line[read - 1] = '\0';
+			execute_command(command);
 		}
-		if (execute_command(line) == -1)
-		{
-			perror("execute_command");
-		}
+		free(command);
 	}
-	free(line);
-	return (status);
+
+	return (0);
+}
+
+/**
+ * prompt - display the shell prompt
+ */
+void prompt(void)
+{
+	write(STDOUT_FILENO, "#cisfun$ ", 9);
+}
+
+/**
+ * read_line - read input from user
+ *
+ * Return: line of input, or NULL
+ */
+char *read_line(void)
+{
+	char *line = NULL;
+	size_t bufsize = 0;
+
+	if (getline(&line, &bufsize, stdin) == -1)
+	{
+		free(line);
+		return (NULL);
+	}
+	return (line);
 }
 
 /**
  * execute_command - Executes a command from the shell
  * @command: the command to execute
- *
- * Return: 0 on success, -1 on failure
  */
-int execute_command(char *command)
+void execute_command(char *command)
 {
 	pid_t pid;
 	int status;
@@ -58,27 +77,21 @@ int execute_command(char *command)
 	argv[0] = command;
 	argv[1] = NULL;
 
-	if (command[0] == '\0')
-	{
-		return (0);
-	}
 	pid = fork();
-	if (pid == -1)
-	{
-		return (-1);
-	}
 	if (pid == 0)
 	{
-		if (execve(command, argv, NULL) == -1)
+		if (execve(argv[0], argv, environ) == -1)
 		{
-			perror(command);
+			perror(argv[0]);
 			_exit(EXIT_FAILURE);
 		}
+	}
+	else if (pid < 0)
+	{
+		perror("fork");
 	}
 	else
 	{
 		waitpid(pid, &status, 0);
 	}
-
-	return (0);
 }
