@@ -1,97 +1,82 @@
 #include "simple_shell.h"
 
-extern char **environ;
+/* global variable */
+unsigned int sig_flag;
 
 /**
- * main - entry point of the simple shell program
- *
- * Return: 0 on success
+ * sig_handler - handles ^C signal interupt
+ * @uuv: unused variable (required for signal function prototype)
  */
-int main(void)
+static void sig_handler(int uuv)
 {
-	char *command;
-
-	while (1)
+	(void) uuv;
+	if (sig_flag == 0)
 	{
-		prompt();
-		command = read_line();
-		if (command == NULL)
-		{
-			if (feof(stdin))
-			{
-				free(command);
-				exit(EXIT_SUCCESS);
-			}
-			else
-			{
-				perror("read_line");
-				continue;
-			}
-		}
-		if (strlen(command) > 0)
-		{
-			execute_command(command);
-		}
-		free(command);
-	}
-
-	return (0);
-}
-
-/**
- * prompt - display the shell prompt
- */
-void prompt(void)
-{
-	write(STDOUT_FILENO, "#cisfun$ ", 9);
-}
-
-/**
- * read_line - read input from user
- *
- * Return: line of input, or NULL
- */
-char *read_line(void)
-{
-	char *line = NULL;
-	size_t bufsize = 0;
-
-	if (getline(&line, &bufsize, stdin) == -1)
-	{
-		free(line);
-		return (NULL);
-	}
-	return (line);
-}
-
-/**
- * execute_command - Executes a command from the shell
- * @command: the command to execute
- */
-void execute_command(char *command)
-{
-	pid_t pid;
-	int status;
-	char *argv[2];
-
-	argv[0] = command;
-	argv[1] = NULL;
-
-	pid = fork();
-	if (pid == 0)
-	{
-		if (execve(argv[0], argv, environ) == -1)
-		{
-			perror(argv[0]);
-			_exit(EXIT_FAILURE);
-		}
-	}
-	else if (pid < 0)
-	{
-		perror("fork");
+		_puts("\n$ ");
 	}
 	else
 	{
-		waitpid(pid, &status, 0);
+		_puts("\n");
 	}
+}
+
+/**
+ * main - main function for the shell
+ * @argc: number of arguments passed to main
+ * @argv: array of arguments passed to main
+ * @environment: array of environment variables
+ *
+ * Return: 0 or exit status, or ?
+ */
+int main(int argc __attribute__((unused)), char **argv, char **environment)
+{
+	size_t len_buffer = 0;
+	unsigned int is_pipe = 0, i;
+	vars_t vars = {NULL, NULL, NULL, 0, NULL, 0, NULL};
+
+	vars.argv = argv;
+	vars.env = make_env(environment);
+	signal(SIGINT, sig_handler);
+	if (!isatty(STDIN_FILENO))
+	{
+		is_pipe = 1;
+	}
+	if (is_pipe == 0)
+	{
+		_puts("$ ");
+	}
+	sig_flag = 0;
+	while (getline(&(vars.buffer), &len_buffer, stdin) != -1)
+	{
+		sig_flag = 1;
+		vars.count++;
+		vars.commands = tokenize(vars.buffer, ";");
+		for (i = 0; vars.commands && vars.commands[i] != NULL; i++)
+		{
+			vars.av = tokenize(vars.commands[i], "\n \t\r");
+			if (vars.av && vars.av[0])
+			{
+				if (check_builtins(&vars) == NULL)
+				{
+					check_for_path(&vars);
+				}
+			}
+			free(vars.av);
+		}
+		free(vars.buffer);
+		free(vars.commands);
+		sig_flag = 0;
+		if (is_pipe == 0)
+		{
+			_puts("$ ");
+		}
+		vars.buffer = NULL;
+	}
+	if (is_pipe == 0)
+	{
+		_puts("\n");
+	}
+	free_env(vars.env);
+	free(vars.buffer);
+	exit(vars.status);
 }
